@@ -8,3 +8,4 @@ documents/*.synctex.gz
 documents/*.toc
 __pycache__/
 *.pyc
+documents/png-rewrite/

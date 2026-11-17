@@ -1,0 +1,334 @@
+% 编译：在 documents/ 目录里跑 xelatex report.tex 两遍
+\documentclass[12pt,a4paper,fontset=windows]{ctexart}
+
+\usepackage{geometry}
+\geometry{left=2.5cm,right=2.5cm,top=2.5cm,bottom=2.5cm}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{colortbl}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{listings}
+\usepackage[nobottomtitles*]{titlesec}
+\usepackage[hidelinks]{hyperref}
+
+\setmainfont{Times New Roman}
+\setmonofont{Consolas}
+% 中文引号按 CJK 标点处理，否则 xeCJK 会在引号与汉字之间插一段西文胶，读起来像多了空格
+\xeCJKDeclareCharClass{CJK}{"2018, "2019, "201C, "201D}
+
+% PR 阶段：封面、Author List、PDF 属性都不写姓名与组号
+\hypersetup{
+  pdftitle={Counting the Shapes of Red-Black Trees with a Black-Height Recurrence},
+  pdfauthor={},
+  pdfsubject={},
+  pdfkeywords={},
+  pdfcreator={},
+  pdfcreationdate={D:20261117213000+08'00'},
+  pdfmoddate={D:20261117213000+08'00'}
+}
+
+% 章标题照 Word 模板：顶格、粗体，「Chapter N:」后半角空格再接章名
+\titleformat{\section}{\raggedright\bfseries\fontsize{14}{17}\selectfont}{Chapter \thesection:}{0.9em}{}[{\color{black}\titlerule[0.9pt]}]
+\titlespacing*{\section}{0pt}{1.3em}{0.65em}
+\titleformat{\subsection}{\raggedright\bfseries\fontsize{12}{15}\selectfont}{\thesubsection}{0.7em}{}[{\color{black}\titlerule[0.4pt]}]
+\titlespacing*{\subsection}{0pt}{1.2em}{0.55em}
+\titleformat{\subsubsection}{\raggedright\bfseries}{\thesubsubsection}{0.6em}{}
+
+\lstdefinestyle{pseudo}{
+  basicstyle=\ttfamily\small,
+  columns=fullflexible,
+  keepspaces=true,
+  frame=none,
+  xleftmargin=1.2em,
+  aboveskip=0.5em,
+  belowskip=0.5em,
+  breaklines=true,
+  escapeinside={(*@}{@*)}
+}
+\lstset{style=pseudo}
+
+\newcommand{\code}[1]{\texttt{#1}}
+\newcommand{\tabhead}[1]{\textbf{#1}}
+
+\pagestyle{plain}
+
+% 段首不缩进、段与段之间留小空档，靠标题横线和表格底色分区
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.5em}
+\setlength{\emergencystretch}{2em}
+
+\begin{document}
+
+\begin{titlepage}
+\centering
+\vspace*{2.0cm}
+{\bfseries\fontsize{24}{30}\selectfont Counting the Shapes of\par}
+\vspace{0.45em}
+{\bfseries\fontsize{24}{30}\selectfont Red-Black Trees\par}
+\vspace{0.45em}
+{\bfseries\fontsize{24}{30}\selectfont with a Black-Height Recurrence\par}
+
+\vspace{1.6cm}
+{\bfseries\fontsize{16}{20}\selectfont Member A\hspace{1.6em}Member B\hspace{1.6em}Member C}
+
+\vspace{1.2cm}
+{\bfseries\fontsize{13}{16}\selectfont Date: 2026-11-17}
+\end{titlepage}
+
+%=====================================================================
+\section{Introduction}
+
+\subsection{题目要求}
+
+题面给的是一棵红黑树和它必须满足的五条性质：每个结点非红即黑；根必须是黑的；叶子是 NULL 且算作黑；红点的两个儿子都必须是黑点（可以是 NULL）；任一结点往下走到叶子的所有路径上黑点数相同。
+
+在这个定义下，给一个正整数 $N$（$N\le 500$），问恰好有 $N$ 个内部结点的不同红黑树有多少种，答案对 $1\,000\,000\,007$ 取模。样例输入 \code{5}，输出 \code{8}。结点不标号，只问形状；左右儿子互换算两棵不同的树。
+
+所以这件事一句话能说完：\textbf{在五条性质的约束下，数有序二叉树的形状。} 规模很小（$N\le 500$），值得做的是先把结构想清楚，再让程序去乘。
+
+\subsection{关键的一步：把五条性质压成黑高}
+
+五条性质里真正限制形状的只有两条：根是黑的、红点的儿子必须黑。第三条（NULL 是黑叶）和第五条（黑高一致）不是限制，它们给的是一个可以逐层拆的量。
+
+题面自己把它定义好了：\textbf{黑高} $H$ 是从根（不含根）走到 NULL 叶子（含 NULL）路径上的黑点数。第五条要求同一棵树上每条路径的黑点数相同，于是一棵子树只有两个自由度——它有几个内部结点、它的黑高是多少。第五条还说了一件事：黑高 $H$ 的树至少有 $2^H-1$ 个内部结点，因为每一层黑点都得站满才最省。
+
+把子树用（黑高，结点数）描述之后，形状就不必单独枚举了。\textbf{反过来说，如果只记结点数、不记黑高，第五条性质就没有落脚的地方}：一个 $n$ 个点的子树能不能接到某个位置上，取决于它的黑高，而不只取决于它有几个点。
+
+\subsection{我们想回答的问题}
+
+\begin{enumerate}[leftmargin=1.6em,itemsep=0.25em]
+\item 递推该怎么立？红根和黑根是不是要分成两套式子？
+\item 数出来的数对不对？样例那个 8 能不能复现，$N$ 再大拿什么验？
+\item 代价多大？$N=500$ 要做多少次乘法、花多少毫秒？
+\end{enumerate}
+
+%=====================================================================
+\section{Data Structure / Algorithm Specification}
+
+\subsection{建模：黑高与哨兵}
+
+记 $b_h(n)$ 为「黑根、黑高 $h$、内部结点数 $n$」的子树个数，$r_h(n)$ 为同条件下红根的个数，$t_h(n)=b_h(n)+r_h(n)$ 留一份和。三张表都按（黑高，结点数）索引，行数由黑高定，列数由 $N$ 定。
+
+唯一一处要“编”的边界是空树：把 NULL 当成一棵黑高为 0 的黑子树，记 $b_0(0)=1$。这不是凑数——题面说 NULL 是黑的，那么它当然满足“黑根、黑高 0、没有内部结点”。\textbf{这一条错了，红点当叶子那种树就全丢了}，3.3 节专讲。
+
+\subsection{两条递推}
+
+红根自己不贡献黑高，两个儿子必须都是黑根、黑高与它相同：
+\[
+r_h(n)=\sum_{i=0}^{n-1} b_h(i)\,b_h(n-1-i),\qquad n\ge 1 .
+\]
+黑根贡献一层黑高，两个儿子的黑高都是 $h$，颜色不限，所以用 $t_h$：
+\[
+b_{h+1}(n)=\sum_{i=0}^{n-1} t_h(i)\,t_h(n-1-i),\qquad n\ge 1 .
+\]
+下标 $i$ 和 $n-1-i$ 把 $n-1$ 个结点全部分给左右两棵子树。\textbf{不要把 $i$ 限制在 $i\le (n-1)/2$ 去重}：左右儿子互换是两棵不同的树，对称只能用来少写一遍乘法，不能用来去重。
+
+答案要把每一层黑高都加起来，因为同样的结点数可以有不同黑高（黑点密的那棵矮、黑点稀的那棵高）：
+\[
+\text{answer}=\sum_{h\ge 0} b_h(N).
+\]
+
+递推的填表顺序不能乱：算 $b_{h+1}$ 之前，$r_h$ 和 $t_h$ 必须已经定好。先把黑根算出来再回头看红根，读到的会是上一层的旧值，数出来偏小，而且不会报错。
+
+\subsection{表的规模}
+
+$N\le 500$ 时黑高层数只有 9 层：$2^9-1=511>500$，所以 $h\le 8$。整张表是 $9\times 501$ 个整数，三张表加起来一万三千多个 \code{int}，连一百 KB 都不到。
+
+用到的量都远小于 $10^{18}$ 的一半：每次乘两个小于 $10^9+7$ 的数，累加四项就取一次模，$64$ 位整数装得下，不需要高精度。
+
+\subsection{复杂度}
+
+黑高只有 $H=\lfloor\log_2(N+1)\rfloor\le 8$ 层，每层要算两遍卷积，每遍 $\sum_{m=1}^{N}m$ 次乘法，所以
+\[
+\text{乘法次数}=2\sum_{h=0}^{H-1}\sum_{m=1}^{N}m=H\cdot N(N+1).
+\]
+$N=500$、$H=8$ 时是 $2\,004\,000$ 次，空间是 $O(HN)$。
+
+对照一下“把所有形状枚举出来再筛”：$N$ 个内部结点的有序二叉树有 Catalan 数那么多，$N=500$ 时是约 300 位的整数。\textbf{能不能不枚举，全靠黑高这第二个参数把形状折进表里。}
+
+%=====================================================================
+\section{Testing Results}
+
+\subsection{样例与内建自检}
+
+样例 \code{5} 输出 \code{8}，与题面一致。程序自带 \code{rbtcount test} 子命令，十三个用例逐个比对：$n=1\ldots 12$ 的期望值来自暴力枚举（3.2 节），$n=500$ 钉的是规模上限那一个，跑出来 $13/13$ 全过。
+
+$n=1\ldots 12$ 的答案依次是
+\[
+1,\,2,\,2,\,4,\,8,\,16,\,33,\,56,\,90,\,164,\,330,\,688 .
+\]
+序列里 $n=2$ 和 $n=3$ 都是 2，容易看错。$n=2$ 是黑根挂一个儿子，儿子随便黑红都行；$n=3$ 是黑根挂两个儿子，两边必须同色——同黑、同红各一种，所以也是 2。
+
+\subsection{与暴力对拍}
+
+暴力参考写了两个版本，互相之间也不共享代码。
+
+\textbf{按形状数着色}：枚举 $n$ 个结点的所有有序形状，对每个形状递归地数合法着色，子树的着色按（根颜色，黑高）分组累计，红根只接黑根儿子。这一版能跑到 $n=12$。
+
+\textbf{全枚举}：$n$ 个点各染黑白两色，$2^n$ 种全部试一遍，最后整体检查五条性质。这一版笨到不会错，但 $n=10$ 要跑 19 秒，所以只用来验上面那一版本身没写错。
+
+\begin{table}[htbp]
+\centering
+\caption{三个实现逐项比对（暴力两版与程序）}
+\small
+\begin{tabular}{rrrr}
+\toprule
+\rowcolor{gray!12}$n$ & 全枚举 & 按形状 & 程序 \\
+\midrule
+1 & 1 & 1 & 1 \\
+2 & 2 & 2 & 2 \\
+3 & 2 & 2 & 2 \\
+4 & 4 & 4 & 4 \\
+5 & 8 & 8 & 8 \\
+6 & 16 & 16 & 16 \\
+7 & 33 & 33 & 33 \\
+8 & 56 & 56 & 56 \\
+9 & 90 & 90 & 90 \\
+10 & 164 & 164 & 164 \\
+11 & --- & 330 & 330 \\
+12 & --- & 688 & 688 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+三列在 $n\le 10$ 上完全相同（表 1），$n=11,12$ 只对了按形状那版。\code{stress.py} 跑完的结论是 $0/13$ 处不符（十二个 $n$ 加题面样例）。
+
+\subsection{第一次数错：漏掉红叶子}
+
+第一版递推没有 $b_0(0)=1$ 这一行。$n=5$ 数出来是 2，样例是 8，差了四倍。当时先怀疑的是“红根那一条写反了”，查了两遍式子没有问题。
+
+真因在边界：红点的两个儿子可以是 NULL，那种树里红点就是叶子，黑高为 0。没有 $b_0(0)=1$，$r_0(1)$ 就恒为 0，所有含红叶子的树全被丢掉，而 $n=5$ 的 8 棵里有 6 棵带红叶子。补上这一行，8 立刻对上了。
+
+这件事的教训不是“边界要小心”这么笼统。\textbf{题面把 NULL 叫叶子、并且说它是黑的，这不是措辞，它决定了空树算不算一棵子树}——算，才有那一行；不算，递推就是另一套。
+
+\subsection{第二次数错：\code{id()} 撞车}
+
+改好递推之后对拍，程序给 8、暴力给 20，两个都不对劲。继续往下压：$n=3$ 暴力数出 4（正解 2），$n=4$ 数出 0（正解 4）。
+
+这次的错不在程序，在暴力脚本自己。形状用 \code{@lru\_cache} 存成嵌套元组，着色时图省事拿 \code{id()} 当结点键：
+\begin{lstlisting}
+col = {id(v): c for v, c in zip(nodes, colors)}   (*@\textcolor{red}{反例，不要这么写}@*)
+\end{lstlisting}
+问题在于所有空树都是同一个 \code{None} 对象，缓存之后所有叶子共享它，两棵不同子树里本该独立的两个位置拿到同一个 \code{id}，一份着色同时染到两个点上。$n=3$ 的形状只有 5 个，按形状分组打印时“根挂两个叶子”那一行显示 4 种着色，看起来每种都合法——这正是它难查的地方：\textbf{它自洽，错得很整齐。}
+
+改法是每个结点都新建对象（\code{class N: \_\_slots\_\_=("l","r","c")}），着色按对象身份走。改完 $n=1\ldots 10$ 与递推逐项相等。
+
+\textbf{两个错误里第二个更值钱。}程序算错会立刻暴露，因为答案对不上样例；工具算错不会——它给的是一个自洽的错答案，而“对拍”这件事的前提是两边都不错。
+
+\subsection{规模与时间}
+
+\begin{table}[htbp]
+\centering
+\caption{规模与时间（每个 $N$ 连算多次取最小，单位毫秒）}
+\small
+\begin{tabular}{rrrrr}
+\toprule
+\rowcolor{gray!12}$N$ & 黑高层数 & 乘法次数 & 时间 (ms) & 答案 \\
+\midrule
+10 & 3 & 330 & 0.0008 & 164 \\
+50 & 5 & 12\,750 & 0.0092 & 37\,914\,925 \\
+100 & 6 & 60\,600 & 0.0450 & 167\,844\,408 \\
+200 & 7 & 281\,400 & 0.2120 & 728\,464\,467 \\
+300 & 8 & 722\,400 & 0.5511 & 527\,048\,662 \\
+400 & 8 & 1\,283\,200 & 0.9940 & 79\,324\,284 \\
+500 & 8 & 2\,004\,000 & 1.5525 & 905\,984\,258 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+最大规模 $N=500$ 是 1.55 毫秒，比 $N=10$ 慢约两千倍，而乘法次数涨了六千倍（330 到 200 万）——时间涨得比工作量慢，说明小 $N$ 那一端固定开销占的比重更大。
+
+%=====================================================================
+\section{Analysis and Comments}
+
+\subsection{序列}
+
+前十二项是 $1,2,2,4,8,16,33,56,90,164,330,688$。从 $n=5$ 起几乎每加一个结点就翻一倍，相邻两项的比值在 $1.6$ 到 $2.1$ 之间摆动，看不出明显周期。
+
+和“没有约束的有序二叉树”比一下：$n=10$ 时 Catalan 数是 16\,796，红黑树只有 164，\textbf{约束砍掉了约 99\%}。$n=12$ 时是 208\,012 对 688，砍掉约 99.7\%。砍得越来越狠，因为树越高，“每条路径黑点数相同”这条越难满足。
+
+\subsection{八层的来历}
+
+整个算法只跑 8 层，不是题目给的，是第五条性质推出来的：黑高 $h$ 的树至少 $2^h-1$ 个内部结点，$N\le 500$ 时 $h\le 8$。$N$ 再大一倍（1000）也只是 9 层。
+
+这也是这道题和一般树形 DP 的区别：一般树形 DP 的层数是 $N$，这里层数是对数级的。\textbf{表小到这个程度，“复杂度”里真正起作用的是 $N^2$ 那一项，不是层数。}
+
+\subsection{时间花在哪}
+
+$N=500$ 时 200 万次乘法用了 1.55 毫秒，平均一次乘加不到 0.8 纳秒。这个数已经贴近“一次乘加、每四项一次取模”这条路径的下限，再往下压也压不出多少——规模上限离“需要优化”还很远。
+
+八层的成本是均匀的：每层都是 $2\times125\,250=250\,500$ 次乘法，八层合计出来就是 200 万。这一点在表 2 里能看出来：$N$ 从 300 涨到 500，乘法从 72 万涨到 200 万，正好 2.8 倍，而 $N^2$ 涨了 2.8 倍——黑高层数没变，涨的全是 $N^2$ 那一项。
+
+\subsection{结论}
+
+\begin{enumerate}[leftmargin=1.6em,itemsep=0.25em]
+\item 这个问题只需要两个参数：内部结点数和黑高。把五条性质压成“根黑、红点儿子黑、黑高一致”之后，剩下的就是两条卷积，没有搜索。
+\item $N=500$ 时 200 万次乘法、1.55 毫秒、答案 $905\,984\,258$。规模上限离“需要优化”还很远。
+\item 递推与两个独立的暴力实现在 $n\le 12$ 上逐项一致，题面样例也对上了。
+\end{enumerate}
+
+\subsection{局限}
+
+\begin{enumerate}[leftmargin=1.6em,itemsep=0.25em]
+\item 对拍只做到 $n=12$。$n$ 再大之后没有第三份实现可以对照，$n=500$ 那个数只能自证（同一个程序算两遍不算验证）。
+\item 没有官方隐藏数据。题面只给了一组样例，其余全是自己造的，真实评测里会不会有别的坑不知道。
+\item 结论里“约束砍掉 99\%”只对 $n\le 12$ 算过，更大的 $n$ 只能靠推，没有实测。
+\end{enumerate}
+
+%=====================================================================
+\section*{References}
+\addcontentsline{toc}{section}{References}
+
+\begin{enumerate}[leftmargin=2.2em,itemsep=0.3em,label={[\arabic*]}]
+\item T. H. Cormen, C. E. Leiserson, R. L. Rivest, C. Stein, ``Introduction to Algorithms'', MIT Press, 4th edition, (2022)
+\item L. J. Guibas, R. Sedgewick, ``A dichromatic framework for balanced trees'', Proceedings of the 19th Annual Symposium on Foundations of Computer Science, 8--21, (1978)
+\end{enumerate}
+
+%=====================================================================
+\clearpage
+\section*{Author List}
+\addcontentsline{toc}{section}{Author List}
+
+\begin{center}
+\small
+\begin{tabular}{p{2.6cm}p{10.4cm}}
+\toprule
+\rowcolor{gray!12}成员 & 负责的内容 \\
+\midrule
+成员 A & 建模与递推：把五条性质压成黑高，写两条卷积与填表顺序，撰写报告第 1--2 章 \\
+成员 B & 暴力参考：形状枚举与全枚举两版独立实现，逐项对拍 \\
+成员 C & 规模实验、表格与图表、报告版式、提交包整理与自检 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{2.2em}
+
+\section*{Declaration}
+\addcontentsline{toc}{section}{Declaration}
+
+We hereby declare that all the work done in this project titled ``Counting the Shapes of Red-Black Trees with a Black-Height Recurrence'' is of our independent effort as a group.
+
+\vspace{2.2em}
+
+\section*{Signatures}
+\addcontentsline{toc}{section}{Signatures}
+
+\vspace{1.2em}
+\begin{center}
+\begin{tabular}{p{5.2cm}p{5.2cm}}
+\rule{5.2cm}{0.4pt} & \rule{5.2cm}{0.4pt} \\
+成员 A & 成员 B \\[2.6em]
+\rule{5.2cm}{0.4pt} & \\
+成员 C & \\
+\end{tabular}
+\end{center}
+
+\end{document}

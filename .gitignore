@@ -1,0 +1,10 @@
+build/
+data/
+documents/png/
+documents/*.aux
+documents/*.log
+documents/*.out
+documents/*.synctex.gz
+documents/*.toc
+__pycache__/
+*.pyc

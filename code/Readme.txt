@@ -57,7 +57,7 @@ tools/ 里的脚本都是 Python 3，只用标准库，不需要 numpy、matplot
 
        .\rbtcount.exe --stats < samples\sample1.in
 
-   形如 n=5 time_ms=0.0008 mults=330。报告里的时间都来自这一行。
+   形如 n=5 time_ms=0.0000 mults=60（同样的例子换成 sample3 的 n=10 是 mults=330）。报告里的时间都来自这一行。
 
 3) --repeat K（做计时实验用，正常求解不需要）：
 
@@ -74,7 +74,8 @@ tools/ 里的脚本都是 Python 3，只用标准库，不需要 numpy、matplot
    输出逐条 ok / FAIL，末行 13/13 ok 才算过。n=1..12 的期望值来自暴力枚举
    （tools\brute.py），n=500 是规模上限、把当时的结果钉住防回归。
 
-辅助脚本（tools/，在 code/ 或仓库根执行都可以，脚本按仓库根定位 exe 时请先 cd 到仓库根）
+辅助脚本（tools/，在 code/ 或仓库根执行都可以：脚本自己按仓库根找 rbtcount.exe，
+不挑当前目录；两种编译方式放在 build/ 或 code/ 下都能找到）
 ----------------------------------------------------------------------------------
     python tools\brute.py                 暴力参考：n=1..12，按形状数着色
     python tools\brute.py --full 8        最笨的一版：2^n 种着色全枚举（n=9 约 3 秒，n=10 约 20 秒）

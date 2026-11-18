@@ -6,7 +6,7 @@
 
 documents/（本目录）
 --------------------
-  wc_2026G##_P4.pdf     报告正文，9 页
+  wc_2026G##_P4.pdf     报告正文，8 页
   readme.txt            本文件
   results/bench.md      规模与时间的原始输出（程序 --stats 打出来的那张表）
 

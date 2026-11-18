@@ -12,7 +12,21 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import brute
 
-EXE = os.path.join("build", "rbtcount.exe")
+# 三种构建方式的产物位置不同：CMake 落在仓库根 build/，code/Readme.txt 那条命令
+# 落在 code/，直接从仓库根编的落在根目录。按顺序找第一个存在的，脚本就不挑 cwd。
+_HERE = os.path.dirname(os.path.abspath(__file__))
+_ROOT = os.path.dirname(os.path.dirname(_HERE))
+
+
+def find_exe():
+    for rel in (("build", "rbtcount.exe"), ("code", "rbtcount.exe"), ("rbtcount.exe",)):
+        p = os.path.join(_ROOT, *rel)
+        if os.path.exists(p):
+            return p
+    raise SystemExit("找不到 rbtcount.exe：先按 README.md 或 code/Readme.txt 编译")
+
+
+EXE = find_exe()
 
 
 def ask(n):

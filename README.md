@@ -17,6 +17,7 @@ documents/      report.tex / report.pdf，results/bench.md，打包用的 readme
 ## 构建与运行
 
 ```bash
+mkdir -p build
 g++ -O2 -std=c++17 -Wall -Wextra code/src/main.cpp code/src/rbtree.cpp -I code/src -o build/rbtcount.exe
 echo 5 | ./build/rbtcount.exe          # 8
 ./build/rbtcount.exe test              # 13/13 ok
@@ -37,4 +38,4 @@ cmake --build --preset default
 
 ## 报告
 
-`documents/report.pdf`，9 页。数字都出自 `documents/results/bench.md` 与 `code/tools/` 里的命令。
+`documents/report.pdf`，8 页。数字都出自 `documents/results/bench.md` 与 `code/tools/` 里的命令。

@@ -13,7 +13,8 @@ import random
 FIXED = [1, 2, 3, 255, 256, 499, 500]
 
 def main():
-    out = os.path.join("build", "in")
+    here = os.path.dirname(os.path.abspath(__file__))
+    out = os.path.join(os.path.dirname(os.path.dirname(here)), "build", "in")
     os.makedirs(out, exist_ok=True)
     cases = [("edge", n) for n in FIXED[:3]]
     cases += [("bound", n) for n in FIXED[3:]]

@@ -38,4 +38,4 @@ cmake --build --preset default
 
 ## 报告
 
-`documents/report.pdf`，9 页。数字都出自 `documents/results/bench.md` 与 `code/tools/` 里的命令。
+`documents/report.pdf`，8 页。数字都出自 `documents/results/bench.md` 与 `code/tools/` 里的命令。
